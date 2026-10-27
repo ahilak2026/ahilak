@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>C Programming Revision Library — Linked Lists, Queues, Stacks</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#141d30;--line:#2b3852;--text:#e8eef8;--muted:#afbdd2;--accent:#9fc5ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,sans-serif}
+header{padding:24px max(18px,calc((100% - 1050px)/2));background:#111a2d;border-bottom:1px solid var(--line)}
+h1{font-size:1.5rem;margin:0 0 6px}p{color:var(--muted);margin:6px 0}
+main{max-width:1050px;margin:auto;padding:20px}.notice{border:1px solid var(--line);background:#111a2a;border-radius:10px;padding:13px;margin:0 0 16px;color:var(--muted)}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}input,select,button{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px}input{flex:1;min-width:220px}button{cursor:pointer}button:hover{border-color:var(--accent)}
+.card{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin:14px 0;overflow:hidden}.head{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h2{font-size:1.06rem;margin:0}.meta{font-size:.88rem;color:var(--muted);margin-top:4px}.actions{display:flex;gap:8px;flex-wrap:wrap}
+pre{margin:0;padding:16px;overflow:auto;border-top:1px solid var(--line);background:#080d18;color:#e8eef8;font:13px/1.55 ui-monospace,Consolas,monospace;white-space:pre}.hidden{display:none}
+footer{max-width:1050px;margin:auto;padding:0 20px 28px;color:var(--muted);font-size:.9rem}
+</style></head>
+<body>
+<header><h1>C Programming Revision Library</h1><p>Seven standalone practice programs: linked lists, circular queues and stacks.</p></header>
+<main>
+<div class="notice"><strong>Revision use:</strong> These programs are for practice and understanding. Use an external website or prewritten code during the exam only if your exam instructions explicitly permit it. Unless your question says otherwise, list positions are 1-based.</div>
+<div class="controls"><input id="search" type="search" placeholder="Search: singly linked list, enqueue, pop, position…"><select id="category"><option value="all">All topics</option><option>Linked list</option><option>Circular queue</option><option>Stack</option></select></div>
+<div id="cards"></div>
+</main>
+<footer>Before the exam, compile each program and practise explaining its pointer/index updates. Adapt prompts and output to the exact question format.</footer>
+<script>
+const programs=[
+{title:"1. Singly Linked List — 3 Elements, Insert/Delete at a Position",cat:"Linked list",tags:"singly linked list insertion deletion position",summary:"Builds three nodes, then inserts and deletes at a 1-based position supplied by input.",
+code:`#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Node {
+    int data;
+    struct Node *next;
+} Node;
+
+Node *newNode(int x) {
+    Node *n = (Node *)malloc(sizeof(Node));
+    if (n == NULL) { printf("Memory allocation failed\\n"); exit(1); }
+    n->data = x;
+    n->next = NULL;
+    return n;
+}
+void display(Node *head) {
+    while (head != NULL) {
+        printf("%d ", head->data);
+        head = head->next;
+    }
+    printf("\\n");
+}
+int length(Node *head) {
+    int n = 0;
+    while (head != NULL) { n++; head = head->next; }
+    return n;
+}
+Node *insertAt(Node *head, int x, int pos) {
+    if (pos < 1 || pos > length(head) + 1) {
+        printf("Invalid insertion position\\n"); return head;
+    }
+    Node *n = newNode(x);
+    if (pos == 1) { n->next = head; return n; }
+    Node *cur = head;
+    for (int i = 1; i < pos - 1; i++) cur = cur->next;
+    n->next = cur->next;
+    cur->next = n;
+    return head;
+}
+Node *deleteAt(Node *head, int pos) {
+    if (pos < 1 || pos > length(head)) {
+        printf("Invalid deletion position\\n"); return head;
+    }
+    Node *tmp;
+    if (pos == 1) {
+        tmp = head; head = head->next; free(tmp); return head;
+    }
+    Node *cur = head;
+    for (int i = 1; i < pos - 1; i++) cur = cur->next;
+    tmp = cur->next;
+    cur->next = tmp->next;
+    free(tmp);
+    return head;
+}
+int main(void) {
+    Node *head = NULL, *tail = NULL, *n;
+    int x, pos;
+
+    printf("Enter 3 elements: ");
+    for (int i = 0; i < 3; i++) {
+        scanf("%d", &x);
+        n = newNode(x);
+        if (head == NULL) head = tail = n;
+        else { tail->next = n; tail = n; }
+    }
+    printf("Original list: "); display(head);
+
+    printf("Enter element and insertion position: ");
+    scanf("%d%d", &x, &pos);
+    head = insertAt(head, x, pos);
+    printf("After insertion: "); display(head);
+
+    printf("Enter deletion position: ");
+    scanf("%d", &pos);
+    head = deleteAt(head, pos);
+    printf("After deletion: "); display(head);
+
+    while (head != NULL) { n = head; head = head->next; free(n); }
+    return 0;
+}`},
+{title:"2. Search for an Element by Moving Forward and Backward",cat:"Linked list",tags:"availability search forward backward doubly linked list",summary:"Uses a doubly linked list and searches from the head forward and from the tail backward. Input: n, n values, key.",
+code:`#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Node {
+    int data;
+    struct Node *prev, *next;
+} Node;
+
+int main(void) {
+    Node *head = NULL, *tail = NULL, *n, *cur;
+    int count, x, key, found = 0, position = 1;
+
+    printf("Enter number of elements: ");
+    scanf("%d", &count);
+    for (int i = 0; i < count; i++) {
+        scanf("%d", &x);
+        n = (Node *)malloc(sizeof(Node));
+        if (n == NULL) return 1;
+        n->data = x; n->prev = tail; n->next = NULL;
+        if (tail != NULL) tail->next = n;
+        else head = n;
+        tail = n;
+    }
+    printf("Enter element to search: ");
+    scanf("%d", &key);
+
+    printf("Forward search: ");
+    cur = head; position = 1;
+    while (cur != NULL) {
+        printf("%d ", cur->data);
+        if (cur->data == key) {
+            printf("\\nElement found at position %d (forward).\\n", position);
+            found = 1; break;
+        }
+        cur = cur->next; position++;
+    }
+    if (!found) printf("\\nElement not found in forward search.\\n");
+
+    found = 0; position = count;
+    printf("Backward search: ");
+    cur = tail;
+    while (cur != NULL) {
+        printf("%d ", cur->data);
+        if (cur->data == key) {
+            printf("\\nElement found at position %d (backward count).\\n", position);
+            found = 1; break;
+        }
+        cur = cur->prev; position--;
+    }
+    if (!found) printf("\\nElement not found in backward search.\\n");
+
+    while (head != NULL) {
+        n = head; head = head->next; free(n);
+    }
+    return 0;
+}`},
+{title:"3. Circular Queue — Enqueue 5 Elements",cat:"Circular queue",tags:"enqueue circular queue array five elements",summary:"Enqueues five values into a circular array queue of capacity 5. Demonstrates wrap-around-safe index updates.",
+code:`#include <stdio.h>
+#define SIZE 5
+
+int main(void) {
+    int q[SIZE], front = -1, rear = -1, x;
+
+    for (int i = 0; i < 5; i++) {
+        printf("Enter element to enqueue: ");
+        scanf("%d", &x);
+
+        if ((rear + 1) % SIZE == front) {
+            printf("Queue is full\\n");
+            break;
+        }
+        if (front == -1) front = 0;
+        rear = (rear + 1) % SIZE;
+        q[rear] = x;
+    }
+
+    printf("Queue from front to rear: ");
+    if (front != -1) {
+        int i = front;
+        while (1) {
+            printf("%d ", q[i]);
+            if (i == rear) break;
+            i = (i + 1) % SIZE;
+        }
+    }
+    printf("\\n");
+    return 0;
+}`},
+{title:"4. Circular Queue — Dequeue from 5 Existing Elements",cat:"Circular queue",tags:"dequeue remove front circular queue",summary:"Assumes five elements are already in the queue; demonstrates removing and displaying the front element.",
+code:`#include <stdio.h>
+#define SIZE 5
+
+int main(void) {
+    int q[SIZE], front = 0, rear = SIZE - 1;
+
+    printf("Enter 5 existing queue elements: ");
+    for (int i = 0; i < SIZE; i++) scanf("%d", &q[i]);
+
+    if (front == -1) {
+        printf("Queue is empty; cannot dequeue.\\n");
+        return 0;
+    }
+
+    printf("Dequeued element: %d\\n", q[front]);
+    if (front == rear) {
+        front = rear = -1;   // queue becomes empty
+    } else {
+        front = (front + 1) % SIZE;
+    }
+
+    if (front == -1) {
+        printf("Queue is now empty.\\n");
+    } else {
+        printf("Remaining queue: ");
+        int i = front;
+        while (1) {
+            printf("%d ", q[i]);
+            if (i == rear) break;
+            i = (i + 1) % SIZE;
+        }
+        printf("\\n");
+    }
+    return 0;
+}`},
+{title:"5. Stack Using Array — Push and Pop",cat:"Stack",tags:"array stack push pop overflow underflow",summary:"Menu-driven array stack with push, pop, display and exit.",
+code:`#include <stdio.h>
+#define SIZE 5
+
+int main(void) {
+    int stack[SIZE], top = -1, choice, x;
+
+    do {
+        printf("\\n1.Push  2.Pop  3.Display  4.Exit\\nChoice: ");
+        scanf("%d", &choice);
+        switch (choice) {
+        case 1:
+            if (top == SIZE - 1) printf("Stack overflow\\n");
+            else {
+                printf("Enter value: "); scanf("%d", &x);
+                stack[++top] = x;
+            }
+            break;
+        case 2:
+            if (top == -1) printf("Stack underflow\\n");
+            else printf("Popped: %d\\n", stack[top--]);
+            break;
+        case 3:
+            if (top == -1) printf("Stack is empty\\n");
+            else {
+                printf("Top to bottom: ");
+                for (int i = top; i >= 0; i--) printf("%d ", stack[i]);
+                printf("\\n");
+            }
+            break;
+        case 4: break;
+        default: printf("Invalid choice\\n");
+        }
+    } while (choice != 4);
+    return 0;
+}`},
+{title:"6. Stack Using Linked List — Push and Pop",cat:"Stack",tags:"linked list stack push pop dynamic memory",summary:"Menu-driven stack; the head pointer is the top of stack.",
+code:`#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Node {
+    int data;
+    struct Node *next;
+} Node;
+
+int main(void) {
+    Node *top = NULL, *n;
+    int choice, x;
+
+    do {
+        printf("\\n1.Push  2.Pop  3.Display  4.Exit\\nChoice: ");
+        scanf("%d", &choice);
+        switch (choice) {
+        case 1:
+            printf("Enter value: "); scanf("%d", &x);
+            n = (Node *)malloc(sizeof(Node));
+            if (n == NULL) { printf("Memory allocation failed\\n"); break; }
+            n->data = x;
+            n->next = top;
+            top = n;
+            break;
+        case 2:
+            if (top == NULL) printf("Stack underflow\\n");
+            else {
+                n = top;
+                printf("Popped: %d\\n", n->data);
+                top = top->next;
+                free(n);
+            }
+            break;
+        case 3:
+            if (top == NULL) printf("Stack is empty\\n");
+            else {
+                printf("Top to bottom: ");
+                for (n = top; n != NULL; n = n->next) printf("%d ", n->data);
+                printf("\\n");
+            }
+            break;
+        case 4: break;
+        default: printf("Invalid choice\\n");
+        }
+    } while (choice != 4);
+
+    while (top != NULL) { n = top; top = top->next; free(n); }
+    return 0;
+}`},
+{title:"7. Doubly Linked List — Find Position and Delete at a Position",cat:"Linked list",tags:"doubly linked list position deletion prev next",summary:"Creates a list, finds the first position of a key, then deletes the node at a 1-based position.",
+code:`#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Node {
+    int data;
+    struct Node *prev, *next;
+} Node;
+
+void display(Node *head) {
+    while (head != NULL) { printf("%d ", head->data); head = head->next; }
+    printf("\\n");
+}
+int findPosition(Node *head, int key) {
+    int pos = 1;
+    while (head != NULL) {
+        if (head->data == key) return pos;
+        head = head->next;
+        pos++;
+    }
+    return -1;
+}
+Node *deleteAt(Node *head, int pos) {
+    if (pos < 1 || head == NULL) {
+        printf("Invalid position\\n"); return head;
+    }
+    Node *cur = head;
+    for (int i = 1; i < pos && cur != NULL; i++) cur = cur->next;
+    if (cur == NULL) { printf("Invalid position\\n"); return head; }
+
+    if (cur->prev != NULL) cur->prev->next = cur->next;
+    else head = cur->next;                 // deleting head
+    if (cur->next != NULL) cur->next->prev = cur->prev;
+    free(cur);
+    return head;
+}
+int main(void) {
+    Node *head = NULL, *tail = NULL, *n;
+    int count, x, key, pos;
+
+    printf("Enter number of nodes: ");
+    scanf("%d", &count);
+    for (int i = 0; i < count; i++) {
+        scanf("%d", &x);
+        n = (Node *)malloc(sizeof(Node));
+        if (n == NULL) return 1;
+        n->data = x; n->next = NULL; n->prev = tail;
+        if (tail != NULL) tail->next = n;
+        else head = n;
+        tail = n;
+    }
+
+    printf("List: "); display(head);
+    printf("Enter key to find: "); scanf("%d", &key);
+    pos = findPosition(head, key);
+    if (pos == -1) printf("Element not found\\n");
+    else printf("Element first occurs at position %d\\n", pos);
+
+    printf("Enter position to delete: "); scanf("%d", &pos);
+    head = deleteAt(head, pos);
+    printf("After deletion: "); display(head);
+
+    while (head != NULL) { n = head; head = head->next; free(n); }
+    return 0;
+}`}
+];
+const root=document.getElementById('cards');
+function render(){
+ const q=document.getElementById('search').value.toLowerCase(),cat=document.getElementById('category').value;
+ root.innerHTML='';
+ programs.filter(p=>(cat==='all'||p.cat===cat)&&(p.title+' '+p.tags+' '+p.summary+' '+p.code).toLowerCase().includes(q)).forEach(p=>{
+  const section=document.createElement('section');section.className='card';
+  const head=document.createElement('div');head.className='head';
+  const info=document.createElement('div');const title=document.createElement('h2');title.textContent=p.title;
+  const meta=document.createElement('div');meta.className='meta';meta.textContent=p.cat+' · '+p.summary;info.append(title,meta);
+  const actions=document.createElement('div');actions.className='actions';
+  const copy=document.createElement('button');copy.textContent='Copy code';
+  copy.onclick=async()=>{try{await navigator.clipboard.writeText(p.code)}catch(e){const t=document.createElement('textarea');t.value=p.code;document.body.append(t);t.select();document.execCommand('copy');t.remove()}copy.textContent='Copied';setTimeout(()=>copy.textContent='Copy code',1000)};
+  const toggle=document.createElement('button');toggle.textContent='Show / hide code';
+  const pre=document.createElement('pre');pre.className='hidden';pre.textContent=p.code;toggle.onclick=()=>pre.classList.toggle('hidden');
+  actions.append(copy,toggle);head.append(info,actions);section.append(head,pre);root.append(section);
+ });
+ if(!root.children.length)root.textContent='No matching program. Try a shorter search.';
+}
+document.getElementById('search').addEventListener('input',render);
+document.getElementById('category').addEventListener('change',render);
+render();
+</script></body></html>
